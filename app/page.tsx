@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 const BrazilMap=dynamic(()=>import("./components/BrazilMap"),{ssr:false,loading:()=> <div className="map loading">Carregando mapa…</div>});
 import { saoPauloZone } from "./lib/saoPauloZones";
+import { loadVets } from "./lib/vetCache";
 export type Vet = {
   c: string;
   r: string;
@@ -75,15 +76,15 @@ export default function Dashboard() {
     [origin, setOrigin] = useState<Vet|null>(null),
     [radius, setRadius] = useState(10),
     [busca, setBusca] = useState(""),
+    [mapReady,setMapReady]=useState(false),
     [page, setPage] = useState(1);
   useEffect(() => {
-    fetch("/veterinarios.json")
-      .then((r) => r.json())
-      .then((a: Vet[]) =>
-        setData([...new Map(a.map((v) => [v.c, v])).values()]),
-      )
+    loadVets<Vet[]>((a)=>setData([...new Map(a.map(v=>[v.c,v])).values()]))
+      .then((a) => setData([...new Map(a.map((v) => [v.c, v])).values()]))
       .finally(() => setLoading(false));
   }, []);
+  useEffect(()=>{const w=window as Window&{requestIdleCallback?:(fn:()=>void)=>number};const id=w.requestIdleCallback?.(()=>setMapReady(true))??window.setTimeout(()=>setMapReady(true),700);return()=>{if(w.requestIdleCallback)cancelIdleCallback(id);else clearTimeout(id)}},[]);
+  const deferredBusca=useDeferredValue(busca);
   const municipios = useMemo(
       () => unique(data.filter((v) => !uf || v.u === uf).map((v) => v.m)),
       [data, uf],
@@ -100,7 +101,7 @@ export default function Dashboard() {
       [data, uf, municipio],
     );
   const filtered = useMemo(() => {
-    const q = busca.trim().toLocaleUpperCase("pt-BR");
+    const q = deferredBusca.trim().toLocaleUpperCase("pt-BR");
     return data
       .filter(
         (v) =>
@@ -114,7 +115,7 @@ export default function Dashboard() {
           (!q || `${v.r} ${v.f} ${v.c}`.toLocaleUpperCase("pt-BR").includes(q)),
       )
       .sort((a, b) => rank[a.p] - rank[b.p] || b.s - a.s);
-  }, [data, uf, municipio, bairro, zona, prioridade, precisao, busca, origin, radius]);
+  }, [data, uf, municipio, bairro, zona, prioridade, precisao, deferredBusca, origin, radius]);
   useEffect(() => setPage(1), [uf, municipio, bairro, zona, prioridade, precisao, busca, origin, radius]);
   const rows = filtered.slice((page - 1) * N, page * N),
     pages = Math.max(1, Math.ceil(filtered.length / N)),
@@ -262,7 +263,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="map-tools"><button className={mapMode==="points"?"active":""} onClick={()=>setMapMode("points")}>Pontos</button><button className={mapMode==="heat"?"active":""} onClick={()=>setMapMode("heat")}>Mapa de calor</button>{origin&&<><span>Raio a partir de {origin.f||origin.r}</span><select value={radius} onChange={e=>setRadius(Number(e.target.value))}>{[1,3,5,10,25].map(x=><option key={x} value={x}>{x} km</option>)}</select><button onClick={()=>setOrigin(null)}>Remover raio</button></>}</div>
-            <BrazilMap data={filtered} area={{ bairro, municipio, uf }} mode={mapMode}/>
+            {mapReady?<BrazilMap data={filtered} area={{ bairro, municipio, uf }} mode={mapMode}/>:<button className="map map-placeholder" onClick={()=>setMapReady(true)}>Carregar mapa interativo</button>}
             <p className="map-note">
               Os pontos usam o centroide do município. A posição exata da
               clínica só será exibida após geocodificação validada do endereço.

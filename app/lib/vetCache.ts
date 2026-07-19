@@ -1,0 +1,5 @@
+const DB="wins-vet-cache",STORE="datasets",KEY="dashboard-v12";
+function open(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function read<T>(){const db=await open();return new Promise<T|undefined>((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).get(KEY);r.onsuccess=()=>resolve(r.result as T|undefined);r.onerror=()=>reject(r.error)})}
+async function write<T>(value:T){const db=await open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+export async function loadVets<T>(onRefresh?:(rows:T)=>void){const cached=await read<T>().catch(()=>undefined);const refresh=fetch("/veterinarios.json",{cache:"default"}).then(r=>r.json()as Promise<T>).then(async rows=>{await write(rows).catch(()=>undefined);onRefresh?.(rows);return rows});if(cached){refresh.catch(()=>undefined);return cached}return refresh}
