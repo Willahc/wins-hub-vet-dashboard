@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import BrazilMap from "../../components/BrazilMap";
+import dynamic from "next/dynamic";
+const BrazilMap=dynamic(()=>import("../../components/BrazilMap"),{ssr:false,loading:()=> <div className="map loading">Carregando mapa…</div>});
 import CrmPanel from "../../components/CrmPanel";
 import type { Vet } from "../../page";
 const show = (v: unknown) => String(v ?? "").trim() || "Não informado";
@@ -10,7 +11,7 @@ export default function Establishment() {
   const { cnpj } = useParams<{ cnpj: string }>(),
     [v, setV] = useState<Vet | null | undefined>();
   useEffect(() => {
-    fetch("/veterinarios.json")
+    fetch(`/detalhes/${cnpj.slice(0,2)}.json`)
       .then((r) => r.json())
       .then((a: Vet[]) => setV(a.find((x) => x.c === cnpj) || null));
   }, [cnpj]);
