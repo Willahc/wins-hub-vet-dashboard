@@ -7,7 +7,13 @@ const PAGE_SIZE = 50;
 const priorityRank: Record<string, number> = { A:0, B:1, C:2, REVISAR:3, EXCLUIR:4 };
 
 function unique(values: string[]) {
-  return [...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const canonical = new Map<string,string>();
+  values.filter(Boolean).forEach(value => {
+    const clean=value.normalize("NFC").replace(/\s+/g," ").trim();
+    const key=clean.toLocaleUpperCase("pt-BR");
+    if(!canonical.has(key)) canonical.set(key,clean);
+  });
+  return [...canonical.values()].sort((a,b)=>a.localeCompare(b,"pt-BR"));
 }
 
 export default function Dashboard() {
@@ -21,7 +27,11 @@ export default function Dashboard() {
   const [busca,setBusca] = useState("");
   const [page,setPage] = useState(1);
 
-  useEffect(()=>{ fetch("/veterinarios.json").then(r=>r.json()).then(setData).finally(()=>setLoading(false)); },[]);
+  useEffect(()=>{ fetch("/veterinarios.json").then(r=>r.json()).then((rows:Vet[])=>{
+    const byCnpj=new Map<string,Vet>();
+    rows.forEach(row=>byCnpj.set(row.c,row));
+    setData([...byCnpj.values()]);
+  }).finally(()=>setLoading(false)); },[]);
   const ufs = useMemo(()=>unique(data.map(v=>v.u)),[data]);
   const municipios = useMemo(()=>unique(data.filter(v=>!uf||v.u===uf).map(v=>v.m)),[data,uf]);
   const bairros = useMemo(()=>unique(data.filter(v=>(!uf||v.u===uf)&&(!municipio||v.m===municipio)).map(v=>v.b)),[data,uf,municipio]);
