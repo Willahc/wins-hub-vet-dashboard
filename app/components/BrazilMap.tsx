@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import maplibregl, { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-export type MapVet = { c:string; r:string; f:string; u:string; m:string; b:string; p:string; s:number; lat:string; lon:string };
+export type MapVet = { c:string; r:string; f:string; u:string; m:string; b:string; p:string; s:number; lat:string; lon:string; q?:string };
 
 type Area={bairro?:string;municipio?:string;uf?:string};
 export default function BrazilMap({data,detail=false,area}:{data:MapVet[];detail?:boolean;area?:Area}) {
@@ -16,7 +16,7 @@ export default function BrazilMap({data,detail=false,area}:{data:MapVet[];detail
 
   function focus(rows:MapVet[]) {
     const m=map.current;
-    const points=areaCenter.current?[areaCenter.current]:rows.filter(v=>v.lat&&v.lon).map(v=>[Number(v.lon),Number(v.lat)] as [number,number]);
+    const points=rows.filter(v=>v.lat&&v.lon).map(v=>v.q==="centroide municipal"&&areaCenter.current?areaCenter.current:[Number(v.lon),Number(v.lat)] as [number,number]);
     if(!m||!points.length) return;
     const samePlace=points.length===1||points.every(p=>p[0]===points[0][0]&&p[1]===points[0][1]);
     if(samePlace) { m.easeTo({center:points[0],zoom:detail?11:10,duration:650}); return; }
@@ -27,7 +27,7 @@ export default function BrazilMap({data,detail=false,area}:{data:MapVet[];detail
   function update(rows:MapVet[]) {
     const m=map.current;
     if(!m||!m.isStyleLoaded()) return;
-    const geo:GeoJSON.FeatureCollection={type:"FeatureCollection",features:rows.filter(v=>areaCenter.current||(v.lat&&v.lon)).map(v=>({type:"Feature",geometry:{type:"Point",coordinates:areaCenter.current||[Number(v.lon),Number(v.lat)]},properties:{cnpj:v.c,name:v.f||v.r,city:v.m,uf:v.u,score:v.s,priority:v.p}}))};
+    const geo:GeoJSON.FeatureCollection={type:"FeatureCollection",features:rows.filter(v=>areaCenter.current||(v.lat&&v.lon)).map(v=>({type:"Feature",geometry:{type:"Point",coordinates:v.q==="centroide municipal"&&areaCenter.current?areaCenter.current:[Number(v.lon),Number(v.lat)]},properties:{cnpj:v.c,name:v.f||v.r,city:v.m,uf:v.u,score:v.s,priority:v.p,precision:v.q||"centroide municipal"}}))};
     const source=m.getSource("vets") as maplibregl.GeoJSONSource|undefined;
     if(source) { source.setData(geo); focus(rows); return; }
     m.addSource("vets",{type:"geojson",data:geo,cluster:!detail,clusterMaxZoom:11,clusterRadius:42});
@@ -46,7 +46,7 @@ export default function BrazilMap({data,detail=false,area}:{data:MapVet[];detail
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
     map.current.on("load",()=>update(latest.current));
     map.current.on("click","clusters",async e=>{const f=map.current?.queryRenderedFeatures(e.point,{layers:["clusters"]})[0];if(!f)return;const source=map.current?.getSource("vets") as maplibregl.GeoJSONSource;const zoom=await source.getClusterExpansionZoom(f.properties?.cluster_id);map.current?.easeTo({center:(f.geometry as GeoJSON.Point).coordinates as [number,number],zoom})});
-    map.current.on("click","points",e=>{const f=e.features?.[0];if(!f)return;const p=f.properties||{};new maplibregl.Popup().setLngLat((f.geometry as GeoJSON.Point).coordinates as [number,number]).setHTML(`<div class="map-popup"><b>${safe(p.name)}</b><span>${safe(p.city)} · ${safe(p.uf)}</span><span>Score ${p.score} · Prioridade ${safe(p.priority)}</span><a href="/estabelecimentos/${p.cnpj}">Abrir ficha completa →</a></div>`).addTo(map.current!)});
+    map.current.on("click","points",e=>{const f=e.features?.[0];if(!f)return;const p=f.properties||{};new maplibregl.Popup().setLngLat((f.geometry as GeoJSON.Point).coordinates as [number,number]).setHTML(`<div class="map-popup"><b>${safe(p.name)}</b><span>${safe(p.city)} · ${safe(p.uf)}</span><span>${safe(p.precision)}</span><span>Score ${p.score} · Prioridade ${safe(p.priority)}</span><a href="/estabelecimentos/${p.cnpj}">Abrir ficha completa →</a></div>`).addTo(map.current!)});
     return()=>{map.current?.remove();map.current=null};
   },[detail]);
 

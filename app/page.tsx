@@ -44,6 +44,9 @@ export type Vet = {
   rp: string;
   src: string;
   upd: string;
+  q: string;
+  gconf: string;
+  gsrc: string;
 };
 const N = 50,
   rank: Record<string, number> = { A: 0, B: 1, C: 2, REVISAR: 3, EXCLUIR: 4 },
