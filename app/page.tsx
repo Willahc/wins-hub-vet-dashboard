@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import BrazilMap from "./components/BrazilMap";
+import dynamic from "next/dynamic";
+const BrazilMap=dynamic(()=>import("./components/BrazilMap"),{ssr:false,loading:()=> <div className="map loading">Carregando mapa…</div>});
 import { saoPauloZone } from "./lib/saoPauloZones";
 export type Vet = {
   c: string;
