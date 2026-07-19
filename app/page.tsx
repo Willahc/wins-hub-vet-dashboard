@@ -47,6 +47,8 @@ export type Vet = {
   q: string;
   gconf: string;
   gsrc: string;
+  web: string;
+  ot: string;
 };
 const N = 50,
   rank: Record<string, number> = { A: 0, B: 1, C: 2, REVISAR: 3, EXCLUIR: 4 },
@@ -67,6 +69,10 @@ export default function Dashboard() {
     [bairro, setBairro] = useState(""),
     [zona, setZona] = useState(""),
     [prioridade, setPrioridade] = useState(""),
+    [precisao, setPrecisao] = useState(""),
+    [mapMode, setMapMode] = useState<"points"|"heat">("points"),
+    [origin, setOrigin] = useState<Vet|null>(null),
+    [radius, setRadius] = useState(10),
     [busca, setBusca] = useState(""),
     [page, setPage] = useState(1);
   useEffect(() => {
@@ -102,11 +108,13 @@ export default function Dashboard() {
           (!bairro || v.b === bairro) &&
           (!zona || saoPauloZone(v.m, v.b) === zona) &&
           (!prioridade || v.p === prioridade) &&
+          (!precisao || v.q === precisao) &&
+          (!origin || distanceKm(origin,v)<=radius) &&
           (!q || `${v.r} ${v.f} ${v.c}`.toLocaleUpperCase("pt-BR").includes(q)),
       )
       .sort((a, b) => rank[a.p] - rank[b.p] || b.s - a.s);
-  }, [data, uf, municipio, bairro, zona, prioridade, busca]);
-  useEffect(() => setPage(1), [uf, municipio, bairro, zona, prioridade, busca]);
+  }, [data, uf, municipio, bairro, zona, prioridade, precisao, busca, origin, radius]);
+  useEffect(() => setPage(1), [uf, municipio, bairro, zona, prioridade, precisao, busca, origin, radius]);
   const rows = filtered.slice((page - 1) * N, page * N),
     pages = Math.max(1, Math.ceil(filtered.length / N)),
     priorityA = filtered.filter((v) => v.p === "A").length,
@@ -114,12 +122,14 @@ export default function Dashboard() {
     avg = filtered.length
       ? Math.round(filtered.reduce((n, v) => n + v.s, 0) / filtered.length)
       : 0;
+  const territories=useMemo(()=>Object.values(filtered.reduce<Record<string,{name:string;n:number;score:number;pop:number}>>((acc,v)=>{const name=`${v.b||"Sem bairro"} · ${v.m}/${v.u}`;const x=acc[name]||{name,n:0,score:0,pop:v.pop};x.n++;x.score+=v.st;acc[name]=x;return acc},{})).map(x=>({...x,score:Math.round(x.score/x.n)})).sort((a,b)=>b.score-a.score||b.pop-a.pop).slice(0,8),[filtered]);
   function clear() {
     setUf("");
     setMunicipio("");
     setBairro("");
     setZona("");
     setPrioridade("");
+    setPrecisao("");setOrigin(null);
     setBusca("");
   }
   return (
@@ -201,6 +211,7 @@ export default function Dashboard() {
             ))}
           </select>
         </label>
+        <label>Precisão<select value={precisao} onChange={e=>setPrecisao(e.target.value)}><option value="">Todas</option><option>endereço confirmado</option><option>POI veterinário compatível</option><option>centroide municipal</option></select></label>
         <label className="search">
           Buscar
           <input
@@ -249,12 +260,14 @@ export default function Dashboard() {
                 {filtered.length.toLocaleString("pt-BR")} pontos
               </div>
             </div>
-            <BrazilMap data={filtered} area={{ bairro, municipio, uf }} />
+            <div className="map-tools"><button className={mapMode==="points"?"active":""} onClick={()=>setMapMode("points")}>Pontos</button><button className={mapMode==="heat"?"active":""} onClick={()=>setMapMode("heat")}>Mapa de calor</button>{origin&&<><span>Raio a partir de {origin.f||origin.r}</span><select value={radius} onChange={e=>setRadius(Number(e.target.value))}>{[1,3,5,10,25].map(x=><option key={x} value={x}>{x} km</option>)}</select><button onClick={()=>setOrigin(null)}>Remover raio</button></>}</div>
+            <BrazilMap data={filtered} area={{ bairro, municipio, uf }} mode={mapMode}/>
             <p className="map-note">
               Os pontos usam o centroide do município. A posição exata da
               clínica só será exibida após geocodificação validada do endereço.
             </p>
           </section>
+          <section className="territorial"><div className="section-title"><div><span>Inteligência territorial</span><h2>Maiores oportunidades da seleção</h2></div></div><div className="territory-grid">{territories.map((x,i)=><article key={x.name}><b>#{i+1} {x.name}</b><strong>{x.score}</strong><small>score territorial · {x.n} estabelecimento(s) · {x.pop.toLocaleString("pt-BR")} habitantes</small></article>)}</div></section>
           <section className="table-card">
             <div className="section-title">
               <div>
@@ -329,6 +342,7 @@ export default function Dashboard() {
                         >
                           Ver ficha →
                         </Link>
+                        <button className="radius-button" onClick={()=>setOrigin(v)}>Buscar no raio</button>
                       </td>
                     </tr>
                   ))}
@@ -362,3 +376,4 @@ export default function Dashboard() {
     </main>
   );
 }
+function distanceKm(a:Vet,b:Vet){const p1=Number(a.lat)*Math.PI/180,p2=Number(b.lat)*Math.PI/180,dp=(Number(b.lat)-Number(a.lat))*Math.PI/180,dl=(Number(b.lon)-Number(a.lon))*Math.PI/180;const x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 6371*2*Math.asin(Math.sqrt(x))}

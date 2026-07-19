@@ -64,17 +64,17 @@ def main():
             similarity=token_set_ratio(street,norm(address.get("street") or ""))
             if similarity>=72 and (best is None or similarity>best[0]):best=(similarity,address)
         if best:address_matches[i]=best
-    extra=["latitude estabelecimento","longitude estabelecimento","precisão geográfica","confiança geográfica","fonte geográfica","id OSM"]
+    extra=["latitude estabelecimento","longitude estabelecimento","precisão geográfica","confiança geográfica","fonte geográfica","id OSM","site OSM","telefone OSM"]
     with OUTPUT.open("w",encoding="utf-8-sig",newline="") as f:
         writer=csv.DictWriter(f,fieldnames=headers+extra);writer.writeheader()
         for i,row in enumerate(rows):
             if i in matches:
                 score,j,name,sratio,dist,cep_eq,num_eq=matches[i];p=pois[j];precision="endereço confirmado" if cep_eq and num_eq else "POI veterinário compatível"
-                row.update({extra[0]:p["lat"],extra[1]:p["lon"],extra[2]:precision,extra[3]:round(score,1),extra[4]:"OpenStreetMap/Geofabrik",extra[5]:p["id"]})
+                row.update({extra[0]:p["lat"],extra[1]:p["lon"],extra[2]:precision,extra[3]:round(score,1),extra[4]:"OpenStreetMap/Geofabrik",extra[5]:p["id"],extra[6]:p.get("website") or "",extra[7]:p.get("phone") or p.get("contact_phone") or ""})
             elif i in address_matches:
                 similarity,p=address_matches[i]
-                row.update({extra[0]:p["lat"],extra[1]:p["lon"],extra[2]:"endereço confirmado",extra[3]:round(85+similarity*.15,1),extra[4]:"OpenStreetMap/Geofabrik",extra[5]:p["id"]})
-            else:row.update({extra[0]:row[lat_col],extra[1]:row[lon_col],extra[2]:"centroide municipal",extra[3]:0,extra[4]:"IBGE",extra[5]:""})
+                row.update({extra[0]:p["lat"],extra[1]:p["lon"],extra[2]:"endereço confirmado",extra[3]:round(85+similarity*.15,1),extra[4]:"OpenStreetMap/Geofabrik",extra[5]:p["id"],extra[6]:"",extra[7]:""})
+            else:row.update({extra[0]:row[lat_col],extra[1]:row[lon_col],extra[2]:"centroide municipal",extra[3]:0,extra[4]:"IBGE",extra[5]:"",extra[6]:"",extra[7]:""})
             writer.writerow(row)
     located=len(matches)+len(address_matches)
     print(f"registros={len(rows)} poi={len(matches)} endereco={len(address_matches)} localizados={located} fallback={len(rows)-located} saida={OUTPUT}")

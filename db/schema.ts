@@ -1,4 +1,2 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+import{sqliteTable,text,integer}from"drizzle-orm/sqlite-core";
+export const crm=sqliteTable("crm",{cnpj:text("cnpj").primaryKey(),stage:text("stage").notNull().default("Novo"),owner:text("owner").notNull().default(""),notes:text("notes").notNull().default(""),nextContact:text("next_contact").notNull().default(""),contacted:integer("contacted",{mode:"boolean"}).notNull().default(false),updatedAt:text("updated_at").notNull()});
