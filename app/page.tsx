@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Vet = { c:string;r:string;f:string;u:string;m:string;b:string;p:string;s:number;g:string;k:string;t:string;e:string;a:string;x:string };
+type Vet = { c:string;r:string;f:string;u:string;m:string;b:string;p:string;s:number;sl:number;st:number;pop:number;den:string;sim:string;id:string;un:number;g:string;k:string;t:string;e:string;a:string;x:string };
 const PAGE_SIZE = 50;
 const priorityRank: Record<string, number> = { A:0, B:1, C:2, REVISAR:3, EXCLUIR:4 };
 
@@ -56,7 +56,7 @@ export default function Dashboard() {
 
   return <main>
     <header className="hero">
-      <div><span className="eyebrow">WiNS Hub Vet · Inteligência comercial</span><h1>Mapa nacional do mercado veterinário</h1><p>Explore estabelecimentos ativos, priorize leads pet e encontre oportunidades por localização.</p></div>
+      <div><span className="eyebrow">WiNS Hub Vet · Inteligência comercial pet</span><h1>Mapa nacional de clínicas para animais de companhia</h1><p>Explore estabelecimentos para cães, gatos e outros pets, priorizados por qualidade comercial e oportunidade territorial.</p></div>
       <div className="status"><span className="pulse"/> Base RFB consolidada</div>
     </header>
 
@@ -73,7 +73,7 @@ export default function Dashboard() {
     {loading ? <section className="loading">Carregando 44 mil estabelecimentos…</section> : <>
       <section className="kpis">
         <article><span>Resultados</span><strong>{filtered.length.toLocaleString("pt-BR")}</strong><small>estabelecimentos filtrados</small></article>
-        <article><span>Pet provável</span><strong>{pet.toLocaleString("pt-BR")}</strong><small>{filtered.length?Math.round(pet/filtered.length*100):0}% da seleção</small></article>
+        <article><span>Mercado pet</span><strong>{pet.toLocaleString("pt-BR")}</strong><small>cães, gatos e animais de companhia</small></article>
         <article><span>Prioridade A</span><strong>{priorityA.toLocaleString("pt-BR")}</strong><small>leads para ação imediata</small></article>
         <article><span>Com contato</span><strong>{contactable.toLocaleString("pt-BR")}</strong><small>telefone ou e-mail disponível</small></article>
         <article><span>Score médio</span><strong>{avg}</strong><small>de 100 pontos</small></article>
@@ -86,10 +86,10 @@ export default function Dashboard() {
 
       <section className="table-card">
         <div className="section-title"><div><span>Base detalhada</span><h2>Estabelecimentos</h2></div><div className="count">{((page-1)*PAGE_SIZE+1).toLocaleString("pt-BR")}–{Math.min(page*PAGE_SIZE,filtered.length).toLocaleString("pt-BR")} de {filtered.length.toLocaleString("pt-BR")}</div></div>
-        <div className="table-wrap"><table><thead><tr><th>Prioridade</th><th>Score</th><th>Estabelecimento</th><th>Localização</th><th>Segmento</th><th>Contato</th><th>Próxima ação</th></tr></thead><tbody>{rows.map(v=><tr key={v.c}><td><span className={`badge p-${v.p.toLowerCase()}`}>{v.p}</span></td><td><span className="score">{v.s}</span></td><td><strong>{v.f||v.r}</strong><small>{v.f&&v.r}</small><code>{v.c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")}</code></td><td><strong>{v.m} · {v.u}</strong><small>{v.b||"Bairro não informado"}</small></td><td>{v.g}<small>{v.k}</small></td><td>{v.t||"—"}<small>{v.e||"Sem e-mail"}</small></td><td>{v.x}</td></tr>)}</tbody></table></div>
+        <div className="table-wrap"><table><thead><tr><th>Prioridade</th><th>Score</th><th>Estabelecimento</th><th>Localização</th><th>Mercado local</th><th>Contato</th><th>Perfil</th></tr></thead><tbody>{rows.map(v=><tr key={v.c}><td><span className={`badge p-${v.p.toLowerCase()}`}>{v.p}</span></td><td><span className="score">{v.s}</span><small>Lead {v.sl} · Território {v.st}</small></td><td><strong>{v.f||v.r}</strong><small>{v.f&&v.r}</small><code>{v.c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")}</code></td><td><strong>{v.m} · {v.u}</strong><small>{v.b||"Bairro não informado"}</small></td><td>{v.pop?v.pop.toLocaleString("pt-BR")+" habitantes":"—"}<small>{v.den?`${v.den} estabelecimentos/100 mil hab.`:"Sem indicador"}</small></td><td>{v.t||"—"}<small>{v.e||"Sem e-mail"}</small></td><td>{v.g}<small>{v.sim==="sim"?"Simples Nacional":""}{v.id?` · ${v.id} anos`:""}{v.un>1?` · ${v.un} unidades`:""}</small></td></tr>)}</tbody></table></div>
         <nav className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>← Anterior</button><span>Página {page} de {totalPages}</span><button disabled={page===totalPages} onClick={()=>setPage(p=>p+1)}>Próxima →</button></nav>
       </section>
     </>}
-    <footer>WiNS Hub Vet · Dados cadastrais da Receita Federal · Classificação orientativa para prospecção</footer>
+    <footer>WiNS Hub Vet · Fontes gratuitas: Receita Federal e IBGE · Classificação orientativa para prospecção pet</footer>
   </main>
 }
