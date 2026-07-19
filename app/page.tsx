@@ -246,7 +246,7 @@ export default function Dashboard() {
                 {filtered.length.toLocaleString("pt-BR")} pontos
               </div>
             </div>
-            <BrazilMap data={filtered} />
+            <BrazilMap data={filtered} area={{ bairro, municipio, uf }} />
             <p className="map-note">
               Os pontos usam o centroide do município. A posição exata da
               clínica só será exibida após geocodificação validada do endereço.
