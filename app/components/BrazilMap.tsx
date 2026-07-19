@@ -6,15 +6,17 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 export type MapVet = { c:string; r:string; f:string; u:string; m:string; b:string; p:string; s:number; lat:string; lon:string };
 
-export default function BrazilMap({data,detail=false}:{data:MapVet[];detail?:boolean}) {
+type Area={bairro?:string;municipio?:string;uf?:string};
+export default function BrazilMap({data,detail=false,area}:{data:MapVet[];detail?:boolean;area?:Area}) {
   const node=useRef<HTMLDivElement>(null);
   const map=useRef<MapLibreMap|null>(null);
   const latest=useRef(data);
+  const areaCenter=useRef<[number,number]|null>(null);
   latest.current=data;
 
   function focus(rows:MapVet[]) {
     const m=map.current;
-    const points=rows.filter(v=>v.lat&&v.lon).map(v=>[Number(v.lon),Number(v.lat)] as [number,number]);
+    const points=areaCenter.current?[areaCenter.current]:rows.filter(v=>v.lat&&v.lon).map(v=>[Number(v.lon),Number(v.lat)] as [number,number]);
     if(!m||!points.length) return;
     const samePlace=points.length===1||points.every(p=>p[0]===points[0][0]&&p[1]===points[0][1]);
     if(samePlace) { m.easeTo({center:points[0],zoom:detail?11:10,duration:650}); return; }
@@ -25,7 +27,7 @@ export default function BrazilMap({data,detail=false}:{data:MapVet[];detail?:boo
   function update(rows:MapVet[]) {
     const m=map.current;
     if(!m||!m.isStyleLoaded()) return;
-    const geo:GeoJSON.FeatureCollection={type:"FeatureCollection",features:rows.filter(v=>v.lat&&v.lon).map(v=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(v.lon),Number(v.lat)]},properties:{cnpj:v.c,name:v.f||v.r,city:v.m,uf:v.u,score:v.s,priority:v.p}}))};
+    const geo:GeoJSON.FeatureCollection={type:"FeatureCollection",features:rows.filter(v=>areaCenter.current||(v.lat&&v.lon)).map(v=>({type:"Feature",geometry:{type:"Point",coordinates:areaCenter.current||[Number(v.lon),Number(v.lat)]},properties:{cnpj:v.c,name:v.f||v.r,city:v.m,uf:v.u,score:v.s,priority:v.p}}))};
     const source=m.getSource("vets") as maplibregl.GeoJSONSource|undefined;
     if(source) { source.setData(geo); focus(rows); return; }
     m.addSource("vets",{type:"geojson",data:geo,cluster:!detail,clusterMaxZoom:11,clusterRadius:42});
@@ -49,6 +51,19 @@ export default function BrazilMap({data,detail=false}:{data:MapVet[];detail?:boo
   },[detail]);
 
   useEffect(()=>update(data),[data]);
+  useEffect(()=>{
+    if(detail||!area?.bairro){areaCenter.current=null;update(data);return}
+    const query=[area.bairro,area.municipio,area.uf,"Brasil"].filter(Boolean).join(", ");
+    const key=`wins-vet-geocode:${query.toLocaleLowerCase("pt-BR")}`;
+    const cached=localStorage.getItem(key);
+    if(cached){areaCenter.current=JSON.parse(cached);update(data);return}
+    const controller=new AbortController();
+    fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&q=${encodeURIComponent(query)}`,{signal:controller.signal})
+      .then(r=>r.ok?r.json():[])
+      .then((results:{lat:string;lon:string}[])=>{if(!results[0])return;const center:[number,number]=[Number(results[0].lon),Number(results[0].lat)];areaCenter.current=center;localStorage.setItem(key,JSON.stringify(center));update(data)})
+      .catch(()=>undefined);
+    return()=>controller.abort();
+  },[area?.bairro,area?.municipio,area?.uf,detail]);
   return <div ref={node} className={detail?"map map-detail":"map"} aria-label="Mapa interativo"/>;
 }
 
