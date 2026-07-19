@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import BrazilMap from "../../components/BrazilMap";
+import CrmPanel from "../../components/CrmPanel";
 import type { Vet } from "../../page";
 const show = (v: unknown) => String(v ?? "").trim() || "Não informado";
 export default function Establishment() {
@@ -54,6 +55,14 @@ export default function Establishment() {
           <small>score combinado</small>
         </div>
       </header>
+      <section className="quick-actions">
+        {v.t&&<a href={`tel:${v.t}`}>Ligar</a>}
+        {v.t&&<a href={`https://wa.me/55${v.t.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">WhatsApp</a>}
+        {v.e&&<a href={`mailto:${v.e}`}>Enviar e-mail</a>}
+        {v.web&&<a href={v.web.startsWith("http")?v.web:`https://${v.web}`} target="_blank" rel="noreferrer">Abrir site</a>}
+        <button onClick={()=>navigator.clipboard.writeText(v.c)}>Copiar CNPJ</button>
+      </section>
+      <CrmPanel cnpj={v.c}/>
       <section className="detail-grid">
         <article>
           <h2>Contato e endereço</h2>
@@ -61,6 +70,8 @@ export default function Establishment() {
             ["Telefone 1", v.t],
             ["Telefone 2", v.t2],
             ["E-mail", v.e],
+            ["Telefone complementar OSM", v.ot],
+            ["Site identificado", v.web],
             ["Endereço", v.a],
             ["Bairro", v.b],
             ["Município / UF", `${v.m} / ${v.u}`],
