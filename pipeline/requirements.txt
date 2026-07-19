@@ -1,0 +1,4 @@
+duckdb>=1.5,<2
+requests>=2.32,<3
+splink>=4,<5
+great-expectations>=1.0,<2
